@@ -27,5 +27,14 @@ This DJS ticket system with transcripts is fully configurable, you can change th
       });
 ```
 
+# Preview
+
+### The Ticket Panel
+![Preview1](https://cdn.discordapp.com/attachments/1009197481915056160/1009241097559625778/unknown.png)
+### Ticket transcripts
+![Preview2](https://cdn.discordapp.com/attachments/1009197481915056160/1009241409393545297/unknown.png)
+### Inside the ticket
+![Preview3](https://cdn.discordapp.com/attachments/1009241617288401006/1009241822234693722/unknown.png)
+
 # Contributing:
 > if you want to contribute create a fork of this project and when you are done editing it update the fork and create a pull request.
