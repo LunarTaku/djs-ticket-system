@@ -107,15 +107,7 @@ module.exports = {
           ),
         ],
       });
-
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription("Your ticket has been successfully created!")
-            .setColor("Green"),
-        ],
-        ephemeral: true,
-      });
+      
     }
     // checks if user clicked the "close ticket" button
     else if (interaction.customId == "ticket-close") {
