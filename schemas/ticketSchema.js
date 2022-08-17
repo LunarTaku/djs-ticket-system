@@ -4,6 +4,8 @@ const ticketCreateSchema = new Schema({
   channelId: String,
   categoryId: String, 
   transcriptChannel: String,
+  supportRole: String,
+  embedDescription: String,
 });
 
 module.exports = model("ticketSchema", ticketCreateSchema, "userTickets");
