@@ -30,7 +30,11 @@ module.exports = {
 
     // check if the user clicked the "create ticket" button
     if (interaction.customId == "createTicket") {
-      
+      await interaction.deferReply({
+        content: "Creating your ticket...",
+        ephemeral: true,
+      });
+
       // Check if config does not exist, if it does it will create one.
       if (!config) {
         await interaction.reply({
@@ -42,6 +46,7 @@ module.exports = {
               )
               .setColor("Red"),
           ],
+          ephemeral: true,
         });
         return;
       }
@@ -67,7 +72,7 @@ module.exports = {
             deny: [PermissionFlagsBits.ViewChannel], // view channel
           },
           {
-            id: interaction.guild.id,
+            id: config.supportRole,
             allow: [
               SendMessages,
               ViewChannel,
@@ -77,37 +82,76 @@ module.exports = {
               ReadMessageHistory,
             ],
           },
+          {
+            id: interaction.member.user.id,
+            allow: [SendMessages, ViewChannel, AddReactions, AttachFiles],
+          },
         ],
       });
 
       // send the "ticket created" message
-      channel.send({
+      if (config.embedDescription) {
+        channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setAuthor({
+                name: interaction.user.username,
+                iconURL: interaction.user.avatarURL(),
+              })
+              .setTitle(`${interaction.user.username} has created a ticket!`)
+              .setDescription(config.embedDescription)
+              .setColor("Random"),
+          ],
+          components: [
+            new ActionRowBuilder().setComponents(
+              new ButtonBuilder()
+                .setCustomId("ticket-close")
+                .setLabel("Close Ticket")
+                .setStyle(ButtonStyle.Danger),
+              new ButtonBuilder()
+                .setCustomId("saveChat")
+                .setLabel("Save Transcript")
+                .setStyle(ButtonStyle.Secondary)
+            ),
+          ],
+        });
+      } else if (config.embedDescription == null) {
+        channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setAuthor({
+                name: interaction.user.username,
+                iconURL: interaction.user.avatarURL(),
+              })
+              .setTitle(`${interaction.user.username} has created a ticket!`)
+              .setDescription(
+                `welcome ${interaction.user.username} to this ticket! Please wait for a staff member to reply to your ticket, or if you created it by accidentally please use the "close ticket" button to close it.`
+              )
+              .setColor("Random"),
+          ],
+          components: [
+            new ActionRowBuilder().setComponents(
+              new ButtonBuilder()
+                .setCustomId("ticket-close")
+                .setLabel("Close Ticket")
+                .setStyle(ButtonStyle.Danger),
+              new ButtonBuilder()
+                .setCustomId("saveChat")
+                .setLabel("Save Transcript")
+                .setStyle(ButtonStyle.Secondary)
+            ),
+          ],
+        });
+      }
+
+      await interaction.followUp({
         embeds: [
           new EmbedBuilder()
-            .setAuthor({
-              name: interaction.user.username,
-              iconURL: interaction.user.avatarURL(),
-            })
-            .setTitle(`${interaction.user.username} has created a ticket!`)
-            .setDescription(
-              `welcome ${interaction.user.username} to this ticket! Please wait for a staff member to reply to your ticket, or if you created it by accidentally please use the "close ticket" button to close it.`
-            )
-            .setColor("Random"),
+            .setDescription("Your ticket has been successfully created!")
+            .setColor("Green"),
         ],
-        components: [
-          new ActionRowBuilder().setComponents(
-            new ButtonBuilder()
-              .setCustomId("ticket-close")
-              .setLabel("Close Ticket")
-              .setStyle(ButtonStyle.Danger),
-            new ButtonBuilder()
-              .setCustomId("saveChat")
-              .setLabel("Save Transcript")
-              .setStyle(ButtonStyle.Secondary)
-          ),
-        ],
+        ephemeral: true,
       });
-      
     }
     // checks if user clicked the "close ticket" button
     else if (interaction.customId == "ticket-close") {
