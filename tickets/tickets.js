@@ -1,101 +1,112 @@
+// Upated version 8/17/2022 7:03PM
+// V1.2.0
+
 const {
-  SlashCommandBuilder,
+  Client,
   CommandInteraction,
-  PermissionFlagsBits,
-  ChannelType,
+  InteractionType,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  ActionRowBuilder,
   ButtonBuilder,
+  ActionRowBuilder,
   ButtonStyle,
+  ChannelType,
+  PermissionFlagsBits,
 } = require("discord.js");
-
 const ticketSchema = require("../../schemas/ticketSchema");
+const { createTranscript } = require("discord-html-transcripts");
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("tickets")
-    .setDescription("Gets the ping of the bot!")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("setup")
-        .setDescription("Setup the ticket system")
-        .addChannelOption((option) => {
-          return option
-            .setName("channel")
-            .setDescription("The channel to send the ticket panel in.")
-            .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText);
-        })
-        .addChannelOption((option) => {
-          return option
-            .setName("category")
-            .setDescription("The category to create the ticket in.")
-            .setRequired(true)
-            .addChannelTypes(ChannelType.GuildCategory);
-        })
-        .addChannelOption((option) => {
-            return option
-                .setName("transcripts")
-                .setDescription("The channel to send the transcripts in.")
-                .setRequired(true)
-                .addChannelTypes(ChannelType.GuildText);
-            }
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("delete")
-        .setDescription("Deletes config for the tickets.")
-    ),
+  name: "interactionCreate",
 
   /**
    *
+   * @param {Client} client
    * @param {ChatInputCommandInteraction} interaction
    */
-  async execute(interaction) {
-    const ticketSystem = await ticketSchema.findOne({
-      guildId: interaction.guild.id,
+  async execute(interaction, client) {
+    if (!interaction.isButton()) return;
+
+    const config = await ticketSchema.findOne({
+      guildID: interaction.guild.id,
     });
 
-    if (interaction.options.getSubcommand() === "setup") {
-      const channel = interaction.options.getChannel("channel");
-      const category = interaction.options.getChannel("category");
-      const transcripts = interaction.options.getChannel("transcripts");
-
-      if (ticketSystem) {
-        ticketSystem.categoryId = category.id;
-        ticketSystem.channelId = channel.id;
-
-        ticketSystem.save().catch((err) => {
-          console.log(err);
+    // check if the user clicked the "create ticket" button
+    if (interaction.customId == "createTicket") {
+      
+      // Check if config does not exist, if it does it will create one.
+      if (!config) {
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("Ticket System")
+              .setDescription(
+                "You have not set up the ticket system yet! Use `/ticket setup` to set it up!"
+              )
+              .setColor("Red"),
+          ],
         });
-      } else {
-        new ticketSchema({
-          guildId: interaction.guild.id,
-          categoryId: category.id,
-          channelId: channel.id,
-          transcriptChannel: transcripts.id,
-        }).save();
+        return;
       }
 
+      const category = interaction.guild.channels.cache.get(config.categoryId);
+
+      const {
+        SendMessages,
+        ViewChannel,
+        AddReactions,
+        AttachFiles,
+        EmbedLinks,
+        ReadMessageHistory,
+      } = PermissionFlagsBits;
+
+      // Create the ticket channel
+      const channel = await category.children.create({
+        name: `ticket-${Math.floor(Math.random() * 100000)}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          {
+            id: interaction.guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel], // view channel
+          },
+          {
+            id: interaction.guild.id,
+            allow: [
+              SendMessages,
+              ViewChannel,
+              AddReactions,
+              AttachFiles,
+              EmbedLinks,
+              ReadMessageHistory,
+            ],
+          },
+        ],
+      });
+
+      // send the "ticket created" message
       channel.send({
         embeds: [
           new EmbedBuilder()
-            .setTitle("Create a ticket!")
+            .setAuthor({
+              name: interaction.user.username,
+              iconURL: interaction.user.avatarURL(),
+            })
+            .setTitle(`${interaction.user.username} has created a ticket!`)
             .setDescription(
-              "Click the `Create Ticket` button below to create a ticket and out support team will be right with you!"
+              `welcome ${interaction.user.username} to this ticket! Please wait for a staff member to reply to your ticket, or if you created it by accidentally please use the "close ticket" button to close it.`
             )
-            .setColor(0x00ae86),
+            .setColor("Random"),
         ],
         components: [
           new ActionRowBuilder().setComponents(
             new ButtonBuilder()
-              .setCustomId("createTicket")
-              .setLabel("Create Ticket!")
-              .setStyle(ButtonStyle.Primary)
-              .setEmoji("<:FIJI_ticket:999672147440054352>")
+              .setCustomId("ticket-close")
+              .setLabel("Close Ticket")
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId("saveChat")
+              .setLabel("Save Transcript")
+              .setStyle(ButtonStyle.Secondary)
           ),
         ],
       });
@@ -103,49 +114,50 @@ module.exports = {
       await interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setTitle("Ticket System Setup")
-            .setDescription("Ticket setup complete!")
-            .addFields(
-              {
-                name: "Channel",
-                value: `<#${channel.id}>`,
-                inline: true,
-              },
-              {
-                name: "Category",
-                value: `${category.name}`,
-                inline: true,
-              }
-            )
-            .setColor(0x00ff00),
+            .setDescription("Your ticket has been successfully created!")
+            .setColor("Green"),
         ],
+        ephemeral: true,
       });
     }
-    if (interaction.options.getSubcommand() === "delete") {
-      const ticketConfig = await ticketSchema.findOne({
-        guildId: interaction.guild.id,
+    // checks if user clicked the "close ticket" button
+    else if (interaction.customId == "ticket-close") {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder().setDescription(
+            "<:FIJI_clock:999673593170509945> Ticket will be deleted in T-10 seconds!"
+          ),
+        ],
+        ephemeral: true,
       });
-      if (!ticketConfig) {
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                "You have not created a ticket system yet! To create one run `/tickets setup`."
-              )
-              .setColor(0xff0000),
-          ],
-        });
-      } else {
-        await ticketSchema.findOneAndDelete({ guildId: interaction.guild.id });
+      setTimeout(() => {
+        interaction.channel.delete();
+      }, 10000);
+    }
+    // checks if user clicked the "save transcript" button and saves the transcript
+    else if (interaction.customId == "saveChat") {
+      await interaction.deferReply();
+      const { channel } = interaction;
+      const reply = new EmbedBuilder()
+        .setTitle(`Transcript saved`)
+        .setDescription(`Saved Transcript: <#${config.transcriptChannel}>`)
+        .setColor("BLUE");
 
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription("Ticket system successfully deleted!")
-              .setColor(0x00ff00),
-          ],
-        });
-      }
+      const attachment = await createTranscript(channel, {
+        limit: -1,
+        returnBuffer: false,
+        fileName: `${channel}.html`,
+      });
+
+      client.channels.cache.get(config.transcriptChannel).send({
+        embeds: [reply],
+        files: [attachment],
+      });
+
+      await interaction.followUp({
+        content: `Transcript has been successfully saved to <#${config.transcriptChannel}>!`,
+        ephemeral: true,
+      });
     }
   },
 };
