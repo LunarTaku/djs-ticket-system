@@ -15,7 +15,7 @@ const ticketSchema = require("../../schemas/ticketSchema");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("tickets")
-    .setDescription("Gets the ping of the bot!")
+    .setDescription("Setup tickets, set ticket options, and remove ticket options")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addSubcommand((subcommand) =>
       subcommand
