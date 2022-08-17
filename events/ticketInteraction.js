@@ -28,23 +28,24 @@ module.exports = {
       guildID: interaction.guild.id,
     });
 
-    // Check if config does not exist, if it does it will create one.
-    if (!config) {
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("Ticket System")
-            .setDescription(
-              "You have not set up the ticket system yet! Use `/ticket setup` to set it up!"
-            )
-            .setColor("Red"),
-        ],
-      });
-      return;
-    }
-
     // check if the user clicked the "create ticket" button
     if (interaction.customId == "createTicket") {
+      
+      // Check if config does not exist, if it does it will create one.
+      if (!config) {
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("Ticket System")
+              .setDescription(
+                "You have not set up the ticket system yet! Use `/ticket setup` to set it up!"
+              )
+              .setColor("Red"),
+          ],
+        });
+        return;
+      }
+
       const category = interaction.guild.channels.cache.get(config.categoryId);
 
       const {
@@ -109,10 +110,12 @@ module.exports = {
 
       await interaction.reply({
         embeds: [
-            new EmbedBuilder()
-                .setDescription("Your ticket has been successfully created!")
-        ]
-      })
+          new EmbedBuilder()
+            .setDescription("Your ticket has been successfully created!")
+            .setColor("Green"),
+        ],
+        ephemeral: true,
+      });
     }
     // checks if user clicked the "close ticket" button
     else if (interaction.customId == "ticket-close") {
@@ -130,6 +133,7 @@ module.exports = {
     }
     // checks if user clicked the "save transcript" button and saves the transcript
     else if (interaction.customId == "saveChat") {
+      await interaction.deferReply();
       const { channel } = interaction;
       const reply = new EmbedBuilder()
         .setTitle(`Transcript saved`)
@@ -147,7 +151,7 @@ module.exports = {
         files: [attachment],
       });
 
-      await interaction.reply({
+      await interaction.followUp({
         content: `Transcript has been successfully saved to <#${config.transcriptChannel}>!`,
         ephemeral: true,
       });
