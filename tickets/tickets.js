@@ -36,18 +36,39 @@ module.exports = {
             .addChannelTypes(ChannelType.GuildCategory);
         })
         .addChannelOption((option) => {
-            return option
-                .setName("transcripts")
-                .setDescription("The channel to send the transcripts in.")
-                .setRequired(true)
-                .addChannelTypes(ChannelType.GuildText);
-            }
-        )
+          return option
+            .setName("transcripts")
+            .setDescription("The channel to send the transcripts in.")
+            .setRequired(true)
+            .addChannelTypes(ChannelType.GuildText);
+        })
+        .addRoleOption((option) => {
+          return option
+            .setName("support_role")
+            .setDescription("The role to assign to support tickets.")
+            .setRequired(true);
+        })
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName("delete")
         .setDescription("Deletes config for the tickets.")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("options")
+        .setDescription("Sets options for the tickets.")
+        .addStringOption((option) => {
+          return option
+            .setName("description")
+            .setDescription("The description for the ticket category.")
+            .setRequired(true);
+        })
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("description_delete")
+        .setDescription("Deletes description for the tickets.")
     ),
 
   /**
@@ -63,6 +84,7 @@ module.exports = {
       const channel = interaction.options.getChannel("channel");
       const category = interaction.options.getChannel("category");
       const transcripts = interaction.options.getChannel("transcripts");
+      const supportRole = interaction.options.getRole("support_role");
 
       if (ticketSystem) {
         ticketSystem.categoryId = category.id;
@@ -77,8 +99,11 @@ module.exports = {
           categoryId: category.id,
           channelId: channel.id,
           transcriptChannel: transcripts.id,
+          supportRole: supportRole.id,
+          embedDescription: null,
         }).save();
       }
+      await interaction.deferReply();
 
       channel.send({
         embeds: [
@@ -100,7 +125,7 @@ module.exports = {
         ],
       });
 
-      await interaction.reply({
+      await interaction.followUp({
         embeds: [
           new EmbedBuilder()
             .setTitle("Ticket System Setup")
@@ -146,6 +171,74 @@ module.exports = {
           ],
         });
       }
+    } else if (interaction.options.getSubcommand() === "options") {
+      const ticketConfig = await ticketSchema.findOne({
+        guildId: interaction.guild.id,
+      });
+      if (!ticketConfig) {
+        interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                "You have not created a ticket system yet! To create one run `/tickets setup`."
+              )
+              .setColor(0xff0000),
+          ],
+        });
+      } else {
+        const description = interaction.options.getString("description");
+        ticketSchema
+          .findOneAndUpdate(
+            { guildId: interaction.guild.id },
+            { embedDescription: description }
+          )
+          .catch((err) => {
+            console.log(err);
+          });
+
+        interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription("Ticket system successfully updated!")
+              .setColor(0x00ff00),
+          ],
+          ephemeral: true,
+        });
+      }
+    } else if(interaction.options.getSubcommand() === "description_delete") {
+      const ticketConfig = await ticketSchema.findOne({
+        guildId: interaction.guild.id,
+      });
+      if (!ticketConfig) {
+        interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                "You have not created a ticket system yet! To create one run `/tickets setup`."
+              )
+              .setColor(0xff0000),
+          ],
+        });
+      } else {
+        ticketSchema
+          .findOneAndUpdate(
+            { guildId: interaction.guild.id },
+            { embedDescription: null }
+          )
+          .catch((err) => {
+            console.log(err);
+          });
+
+        interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription("Ticket system successfully updated!")
+              .setColor(0x00ff00),
+          ],
+          ephemeral: true,
+        });
+      }
     }
   },
 };
+
