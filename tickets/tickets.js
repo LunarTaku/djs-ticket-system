@@ -15,7 +15,7 @@ const ticketSchema = require("../../schemas/ticketSchema");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("tickets")
-    .setDescription("Setup tickets, set ticket options, and remove ticket options")
+    .setDescription("Gets the ping of the bot!")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addSubcommand((subcommand) =>
       subcommand
@@ -48,6 +48,11 @@ module.exports = {
             .setDescription("The role to assign to support tickets.")
             .setRequired(true);
         })
+        .addStringOption((option) => {
+          return option
+            .setName("panel_description")
+            .setDescription("The description for the ticket panel.");
+        })
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -69,6 +74,11 @@ module.exports = {
       subcommand
         .setName("description_delete")
         .setDescription("Deletes description for the tickets.")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("panel_reset")
+        .setDescription("Resets the ticket panel.")
     ),
 
   /**
@@ -85,6 +95,8 @@ module.exports = {
       const category = interaction.options.getChannel("category");
       const transcripts = interaction.options.getChannel("transcripts");
       const supportRole = interaction.options.getRole("support_role");
+      let panelDescription =
+        interaction.options.getString("panel_description");
 
       if (ticketSystem) {
         ticketSystem.categoryId = category.id;
@@ -101,17 +113,21 @@ module.exports = {
           transcriptChannel: transcripts.id,
           supportRole: supportRole.id,
           embedDescription: null,
+          panelDescription: null,
         }).save();
       }
       await interaction.deferReply();
 
+      if(!panelDescription) {
+        panelDescription = null;
+      }
+
+      const panelMsg = "Click the `Create Ticket` button below to create a ticket and out support team will be right with you!"
       channel.send({
         embeds: [
           new EmbedBuilder()
             .setTitle("Create a ticket!")
-            .setDescription(
-              "Click the `Create Ticket` button below to create a ticket and out support team will be right with you!"
-            )
+            .setDescription(null == panelDescription ? panelMsg : panelDescription)
             .setColor(0x00ae86),
         ],
         components: [
@@ -205,7 +221,7 @@ module.exports = {
           ephemeral: true,
         });
       }
-    } else if(interaction.options.getSubcommand() === "description_delete") {
+    } else if (interaction.options.getSubcommand() === "description_delete") {
       const ticketConfig = await ticketSchema.findOne({
         guildId: interaction.guild.id,
       });
@@ -241,4 +257,3 @@ module.exports = {
     }
   },
 };
-
