@@ -91,30 +91,31 @@ module.exports = {
 
       // send the "ticket created" message
       if (config.embedDescription) {
+        const buttonComp = new ActionRowBuilder().setComponents(
+          new ButtonBuilder()
+            .setCustomId("ticket-close")
+            .setLabel("Close Ticket")
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId("saveChat")
+            .setLabel("Save Transcript")
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        const ticketMsg = new EmbedBuilder()
+          .setAuthor({
+            name: interaction.user.username,
+            iconURL: interaction.user.avatarURL(),
+          })
+          .setTitle(`${interaction.user.username} has created a ticket!`)
+          .setDescription(config.embedDescription)
+          .setColor("Random");
+
         channel.send({
-          embeds: [
-            new EmbedBuilder()
-              .setAuthor({
-                name: interaction.user.username,
-                iconURL: interaction.user.avatarURL(),
-              })
-              .setTitle(`${interaction.user.username} has created a ticket!`)
-              .setDescription(config.embedDescription)
-              .setColor("Random"),
-          ],
-          components: [
-            new ActionRowBuilder().setComponents(
-              new ButtonBuilder()
-                .setCustomId("ticket-close")
-                .setLabel("Close Ticket")
-                .setStyle(ButtonStyle.Danger),
-              new ButtonBuilder()
-                .setCustomId("saveChat")
-                .setLabel("Save Transcript")
-                .setStyle(ButtonStyle.Secondary)
-            ),
-          ],
+          embeds: [ticketMsg],
+          components: [buttonComp],
         });
+
       } else if (config.embedDescription == null) {
         channel.send({
           embeds: [
@@ -165,7 +166,9 @@ module.exports = {
       });
       setTimeout(() => {
         interaction.channel.delete();
-      }, 10000);
+      }, 10000).catch((err) => {
+        console.log(err);
+      });
     }
     // checks if user clicked the "save transcript" button and saves the transcript
     else if (interaction.customId == "saveChat") {
@@ -194,3 +197,4 @@ module.exports = {
     }
   },
 };
+
