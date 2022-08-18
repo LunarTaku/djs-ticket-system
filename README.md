@@ -3,12 +3,10 @@
 # djs-ticket-system
 This DJS ticket system with transcripts is fully configurable, you can change the transcripts channel, tickets channel, and more! This command uses embeds, and buttons.
 
-# CHANGELOG #1
-- Added support roles.
-- Added user to ticket.
-- Added optional description for ticket.
-- Fixed "Unknown Interaction" or "Interaction already sent or deffered" errors.
-- FIxed other errors.
+# CHANGELOG #2
+- Fixed errors
+- Fixed interaction errors
+- Added customizable ticket panel descriptions
 
 ## Dependencies:
 -  mongoose => `npm i mongoose`
