@@ -3,7 +3,7 @@ const ticketCreateSchema = new Schema({
   guildId: String,
   channelId: String,
   categoryId: String, 
-  transcriptChannel: String,
+  ticketlog: String,
   supportRole: String,
   embedDescription: String,
 });
