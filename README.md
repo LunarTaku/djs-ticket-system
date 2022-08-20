@@ -6,7 +6,8 @@ This DJS ticket system with transcripts is fully configurable, you can change th
 # CHANGELOG #2
 - Fixed errors
 - Fixed interaction errors
-- Added customizable ticket panel descriptions
+- Added claim button for supporters
+- Fixed delete ticket spam will crash the bot
 
 ## Dependencies:
 -  mongoose => `npm i mongoose`
