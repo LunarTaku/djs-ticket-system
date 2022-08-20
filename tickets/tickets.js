@@ -1,6 +1,5 @@
 const {
   SlashCommandBuilder,
-  CommandInteraction,
   PermissionFlagsBits,
   ChannelType,
   ChatInputCommandInteraction,
@@ -14,8 +13,8 @@ const ticketSchema = require("../../schemas/ticketSchema");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("tickets")
-    .setDescription("Gets the ping of the bot!")
+    .setName("ticket")
+    .setDescription("Configure the ticket system")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addSubcommand((subcommand) =>
       subcommand
@@ -37,8 +36,8 @@ module.exports = {
         })
         .addChannelOption((option) => {
           return option
-            .setName("transcripts")
-            .setDescription("The channel to send the transcripts in.")
+            .setName("logging_channel")
+            .setDescription("Logs a ticket after its been closed")
             .setRequired(true)
             .addChannelTypes(ChannelType.GuildText);
         })
@@ -50,37 +49,16 @@ module.exports = {
         })
         .addStringOption((option) => {
           return option
-            .setName("panel_description")
-            .setDescription("The description for the ticket panel.");
+            .setName("description")
+            .setDescription("The ticket systems description")
+            .setRequired(false);
         })
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName("delete")
         .setDescription("Deletes config for the tickets.")
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("options")
-        .setDescription("Sets options for the tickets.")
-        .addStringOption((option) => {
-          return option
-            .setName("description")
-            .setDescription("The description for the ticket category.")
-            .setRequired(true);
-        })
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("description_delete")
-        .setDescription("Deletes description for the tickets.")
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("panel_reset")
-        .setDescription("Resets the ticket panel.")
     ),
-
   /**
    *
    * @param {ChatInputCommandInteraction} interaction
@@ -93,10 +71,9 @@ module.exports = {
     if (interaction.options.getSubcommand() === "setup") {
       const channel = interaction.options.getChannel("channel");
       const category = interaction.options.getChannel("category");
-      const transcripts = interaction.options.getChannel("transcripts");
+      const ticketlog = interaction.options.getChannel("logging_channel");
       const supportRole = interaction.options.getRole("support_role");
-      let panelDescription =
-        interaction.options.getString("panel_description");
+      const description =interaction.options.getString("description") || "Click the `Create Ticket` button below to create a ticket and out support team will be right with you!";
 
       if (ticketSystem) {
         ticketSystem.categoryId = category.id;
@@ -110,25 +87,17 @@ module.exports = {
           guildId: interaction.guild.id,
           categoryId: category.id,
           channelId: channel.id,
-          transcriptChannel: transcripts.id,
+          ticketlog: ticketlog.id,
           supportRole: supportRole.id,
-          embedDescription: null,
-          panelDescription: null,
         }).save();
       }
-      await interaction.deferReply();
 
-      if(!panelDescription) {
-        panelDescription = null;
-      }
-
-      const panelMsg = "Click the `Create Ticket` button below to create a ticket and out support team will be right with you!"
       channel.send({
         embeds: [
           new EmbedBuilder()
             .setTitle("Create a ticket!")
-            .setDescription(null == panelDescription ? panelMsg : panelDescription)
-            .setColor(0x00ae86),
+            .setDescription(description)
+            .setColor("Blurple"),
         ],
         components: [
           new ActionRowBuilder().setComponents(
@@ -136,12 +105,12 @@ module.exports = {
               .setCustomId("createTicket")
               .setLabel("Create Ticket!")
               .setStyle(ButtonStyle.Primary)
-              .setEmoji("<:FIJI_ticket:999672147440054352>")
+              .setEmoji("<:ticketbadge:1010601796374364171>")
           ),
         ],
       });
 
-      await interaction.followUp({
+      interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setTitle("Ticket System Setup")
@@ -158,8 +127,9 @@ module.exports = {
                 inline: true,
               }
             )
-            .setColor(0x00ff00),
+            .setColor("Green"),
         ],
+        ephemeral: true
       });
     }
     if (interaction.options.getSubcommand() === "delete") {
@@ -167,92 +137,19 @@ module.exports = {
         guildId: interaction.guild.id,
       });
       if (!ticketConfig) {
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                "You have not created a ticket system yet! To create one run `/tickets setup`."
-              )
-              .setColor(0xff0000),
-          ],
-        });
+        const NotCreatedSystem = new EmbedBuilder()
+          .setDescription(
+            "You have not created a ticket system yet! To create one run `/tickets setup`."
+          )
+          .setColor("Red");
+        interaction.reply({ embeds: [NotCreatedSystem] });
       } else {
         await ticketSchema.findOneAndDelete({ guildId: interaction.guild.id });
 
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription("Ticket system successfully deleted!")
-              .setColor(0x00ff00),
-          ],
-        });
-      }
-    } else if (interaction.options.getSubcommand() === "options") {
-      const ticketConfig = await ticketSchema.findOne({
-        guildId: interaction.guild.id,
-      });
-      if (!ticketConfig) {
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                "You have not created a ticket system yet! To create one run `/tickets setup`."
-              )
-              .setColor(0xff0000),
-          ],
-        });
-      } else {
-        const description = interaction.options.getString("description");
-        ticketSchema
-          .findOneAndUpdate(
-            { guildId: interaction.guild.id },
-            { embedDescription: description }
-          )
-          .catch((err) => {
-            console.log(err);
-          });
-
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription("Ticket system successfully updated!")
-              .setColor(0x00ff00),
-          ],
-          ephemeral: true,
-        });
-      }
-    } else if (interaction.options.getSubcommand() === "description_delete") {
-      const ticketConfig = await ticketSchema.findOne({
-        guildId: interaction.guild.id,
-      });
-      if (!ticketConfig) {
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                "You have not created a ticket system yet! To create one run `/tickets setup`."
-              )
-              .setColor(0xff0000),
-          ],
-        });
-      } else {
-        ticketSchema
-          .findOneAndUpdate(
-            { guildId: interaction.guild.id },
-            { embedDescription: null }
-          )
-          .catch((err) => {
-            console.log(err);
-          });
-
-        interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription("Ticket system successfully updated!")
-              .setColor(0x00ff00),
-          ],
-          ephemeral: true,
-        });
+        const CreatedSystem = new EmbedBuilder()
+          .setDescription("Ticket system successfully deleted!")
+          .setColor("Red");
+        interaction.reply({ embeds: [CreatedSystem] });
       }
     }
   },
